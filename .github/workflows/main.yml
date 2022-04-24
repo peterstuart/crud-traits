@@ -1,0 +1,51 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ '*' ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:password@localhost/postgres
+
+    steps:
+      - uses: actions/checkout@v2
+        
+      - name: "Cache cargo dependencies"
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+        
+      - name: "Install stable toolchain"
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+        
+      - name: "rustfmt"
+        run: cargo fmt -- --check
+        
+      - name: "clippy"
+        run: cargo clippy -- -D warnings && cargo clippy --tests -- -D warnings
+        
+      - name: "test"
+        run: cargo test
