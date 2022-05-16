@@ -1,19 +1,19 @@
+mod belongs_to;
 mod create;
 mod delete;
 mod has_many;
+mod has_many_and_belongs_to;
 mod has_one;
-mod has_parents_with_many_children;
-mod has_parents_with_one_child;
-mod id;
+mod meta;
 mod read;
 mod update;
 
+pub use belongs_to::BelongsTo;
 pub use create::Create;
 pub use delete::{Delete, DeleteSelf};
 pub use has_many::HasMany;
+pub use has_many_and_belongs_to::HasManyAndBelongsTo;
 pub use has_one::HasOne;
-pub use has_parents_with_many_children::HasParentsWithManyChildren;
-pub use has_parents_with_one_child::HasParentsWithOneChild;
-pub use id::{hash_map_by_id, Id};
+pub use meta::{hash_map_by_id, Meta};
 pub use read::Read;
 pub use update::{Update, UpdateSelf};

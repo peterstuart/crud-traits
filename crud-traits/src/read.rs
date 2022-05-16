@@ -1,3 +1,4 @@
+use crate::Meta;
 use async_trait::async_trait;
 
 /// Read records with a given ID or IDs.
@@ -6,7 +7,7 @@ use async_trait::async_trait;
 ///
 /// ```
 /// use async_trait::async_trait;
-/// use crud_traits::Read;
+/// use crud_traits::{Meta, Read};
 /// use sqlx::{Error, FromRow, PgPool};
 ///
 /// #[derive(FromRow)]
@@ -16,15 +17,21 @@ use async_trait::async_trait;
 ///     last_name: String,
 /// }
 ///
-/// #[async_trait]
-/// impl Read for User {
+/// impl Meta for User {
 ///     type Id = i32;
 ///     type Store = PgPool;
 ///     type Error = Error;
 ///
+///     fn id(&self) -> i32 {
+///         self.id
+///     }
+/// }
+///
+/// #[async_trait]
+/// impl Read for User {
 ///     async fn read(id: i32, store: &PgPool) -> Result<Self, Error>
 ///     {
-///         sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ?")
+///         sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
 ///             .bind(id)
 ///             .fetch_one(store)
 ///             .await
@@ -34,7 +41,7 @@ use async_trait::async_trait;
 ///         ids: &[Self::Id],
 ///         store: &Self::Store,
 ///     ) -> Result<Vec<Self>, Self::Error> {
-///         sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ANY(?)")
+///         sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ANY($1)")
 ///             .bind(ids)
 ///             .fetch_all(store)
 ///             .await
@@ -44,12 +51,8 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait Read
 where
-    Self: Sized,
+    Self: Meta + Sized,
 {
-    type Id;
-    type Store: Send + Sync;
-    type Error;
-
     async fn read(id: Self::Id, store: &Self::Store) -> Result<Self, Self::Error>;
 
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error>;

@@ -1,5 +1,6 @@
-use super::id::Id;
 use async_trait::async_trait;
+
+use crate::Meta;
 
 /// Delete record with a given ID.
 ///
@@ -7,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// ```
 /// use async_trait::async_trait;
-/// use crud_traits::Delete;
+/// use crud_traits::{Delete, Meta};
 /// use sqlx::{Error, FromRow, PgPool};
 ///
 /// #[derive(FromRow)]
@@ -17,15 +18,21 @@ use async_trait::async_trait;
 ///     last_name: String,
 /// }
 ///
-/// #[async_trait]
-/// impl Delete for User {
+/// impl Meta for User {
 ///     type Id = i32;
 ///     type Store = PgPool;
 ///     type Error = Error;
-
+///
+///     fn id(&self) -> i32 {
+///         self.id
+///     }
+/// }
+///
+/// #[async_trait]
+/// impl Delete for User {
 ///     async fn delete(id: i32, store: &PgPool) -> Result<(), Error>
 ///     {
-///         sqlx::query("DELETE FROM users WHERE id = ?")
+///         sqlx::query("DELETE FROM users WHERE id = $1")
 ///             .bind(id)
 ///             .execute(store)
 ///             .await?;
@@ -36,22 +43,17 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait Delete
 where
-    Self: Sized,
+    Self: Meta + Sized,
 {
-    type Id;
-    type Store: Send + Sync;
-    type Error;
-
     async fn delete(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error>;
 }
 
 #[async_trait]
 pub trait DeleteSelf
 where
-    Self: Id + Delete<Id = <Self as Id>::Id>,
-    <Self as Id>::Id: Send,
+    Self: Meta + Delete,
 {
-    async fn delete(self, store: &Self::Store) -> Result<(), <Self as Delete>::Error> {
+    async fn delete(self, store: &Self::Store) -> Result<(), Self::Error> {
         let id = self.id();
         <Self as Delete>::delete(id, store).await
     }
@@ -59,7 +61,7 @@ where
 
 impl<T> DeleteSelf for T
 where
-    T: Id + Delete<Id = <T as Id>::Id>,
-    <T as Id>::Id: Send,
+    T: Delete,
+    <T as Meta>::Id: Send,
 {
 }
