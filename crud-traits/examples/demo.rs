@@ -45,6 +45,13 @@ impl Read for Person {
             .await
     }
 
+    async fn read_optional(id: i32, store: &Self::Store) -> Result<Option<Self>, Error> {
+        sqlx::query_as::<_, Person>("SELECT * FROM people WHERE id = $1")
+            .bind(id)
+            .fetch_optional(store)
+            .await
+    }
+
     async fn read_many(ids: &[i32], store: &PgPool) -> Result<Vec<Self>, Error> {
         sqlx::query_as::<_, Person>("SELECT * FROM people WHERE id = ANY($1)")
             .bind(ids)
@@ -96,6 +103,13 @@ impl Read for Dog {
         sqlx::query_as::<_, Dog>("SELECT * FROM dogs WHERE id = $1")
             .bind(id)
             .fetch_one(store)
+            .await
+    }
+
+    async fn read_optional(id: i32, store: &PgPool) -> Result<Option<Self>, Error> {
+        sqlx::query_as::<_, Dog>("SELECT * FROM dogs WHERE id = $1")
+            .bind(id)
+            .fetch_optional(store)
             .await
     }
 
