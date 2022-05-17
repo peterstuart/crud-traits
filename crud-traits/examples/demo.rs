@@ -5,6 +5,7 @@ use sqlx::{Error, FromRow, PgPool};
 use std::env;
 
 #[derive(Clone, Debug, Eq, FromRow, PartialEq)]
+#[has_many(child = "Dog")]
 struct Person {
     id: i32,
     name: String,
@@ -60,9 +61,8 @@ impl Read for Person {
     }
 }
 
-has_many!(Person, Dog);
-
 #[derive(Clone, Debug, Eq, FromRow, PartialEq)]
+#[belongs_to(parent = "Person", table = "dogs")]
 struct Dog {
     id: i32,
     person_id: i32,
@@ -120,8 +120,6 @@ impl Read for Dog {
             .await
     }
 }
-
-belongs_to!(Dog, Person, "dogs", person);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -1,45 +1,30 @@
+use darling::FromMeta;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::quote;
-use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input, LitStr, Token,
-};
+use syn::{parse_macro_input, AttributeArgs, ItemStruct};
 
+#[derive(Debug, FromMeta)]
 struct BelongsToOptions {
-    child: Ident,
     parent: Ident,
-    table: LitStr,
-    function_name: Ident,
+    table: String,
 }
 
-impl Parse for BelongsToOptions {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let child = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let parent = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let table = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let function_name = input.parse()?;
+#[proc_macro_attribute]
+pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = parse_macro_input!(args as AttributeArgs);
+    let input = parse_macro_input!(input as ItemStruct);
 
-        Ok(Self {
-            child,
-            parent,
-            table,
-            function_name,
-        })
-    }
-}
+    let options = match BelongsToOptions::from_list(&attr_args) {
+        Ok(value) => value,
+        Err(error) => {
+            return TokenStream::from(error.write_errors());
+        }
+    };
 
-#[proc_macro]
-pub fn belongs_to(input: TokenStream) -> TokenStream {
-    let options = parse_macro_input!(input as BelongsToOptions);
-
-    let child = options.child;
-    let table = options.table.value();
+    let child = input.ident.clone();
     let parent = options.parent;
-    let function_name = options.function_name;
+    let table = options.table;
 
     let parent_id_field = Ident::new(
         &format!("{}_id", parent.to_string().to_lowercase()),
@@ -48,6 +33,8 @@ pub fn belongs_to(input: TokenStream) -> TokenStream {
     let query = format!("SELECT * FROM {table} WHERE {parent_id_field} = ANY($1)");
 
     let result = quote! {
+        #input
+
         #[async_trait::async_trait]
         impl crud_traits::BelongsTo<#parent> for #child {
             fn parent_id(&self) -> <#parent as crud_traits::Meta>::Id {
@@ -64,43 +51,34 @@ pub fn belongs_to(input: TokenStream) -> TokenStream {
                     .await
             }
         }
-
-        impl #child {
-            pub async fn #function_name(
-                &self,
-                store: &<#parent as crud_traits::Meta>::Store
-            ) -> Result<#parent, <Self as crud_traits::Meta>::Error> {
-                self.parent(store).await
-            }
-        }
     };
 
     result.into()
 }
 
+#[derive(Debug, FromMeta)]
 struct HasManyOptions {
-    parent: Ident,
     child: Ident,
 }
 
-impl Parse for HasManyOptions {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let parent = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let child = input.parse()?;
+#[proc_macro_attribute]
+pub fn has_many(args: TokenStream, input: TokenStream) -> TokenStream {
+    let attr_args = parse_macro_input!(args as AttributeArgs);
+    let input = parse_macro_input!(input as ItemStruct);
 
-        Ok(Self { parent, child })
-    }
-}
+    let options = match HasManyOptions::from_list(&attr_args) {
+        Ok(value) => value,
+        Err(error) => {
+            return TokenStream::from(error.write_errors());
+        }
+    };
 
-#[proc_macro]
-pub fn has_many(input: TokenStream) -> TokenStream {
-    let options = parse_macro_input!(input as HasManyOptions);
-
-    let parent = options.parent;
+    let parent = input.ident.clone();
     let child = options.child;
 
     let result = quote! {
+        #input
+
         #[async_trait::async_trait]
         impl HasMany<#child> for #parent {}
     };
