@@ -45,10 +45,10 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 ids: &[<#parent as crud_traits::Meta>::Id],
                 store: &<#parent as crud_traits::Meta>::Store
             ) -> Result<Vec<Self>, <Self as crud_traits::Meta>::Error> {
-                sqlx::query_as::<_, Dog>(#query)
+                Ok(sqlx::query_as::<_, Self>(#query)
                     .bind(ids)
                     .fetch_all(store)
-                    .await
+                    .await?)
             }
         }
     };
@@ -80,7 +80,7 @@ pub fn has_many(args: TokenStream, input: TokenStream) -> TokenStream {
         #input
 
         #[async_trait::async_trait]
-        impl HasMany<#child> for #parent {}
+        impl crud_traits::HasMany<#child> for #parent {}
     };
 
     result.into()

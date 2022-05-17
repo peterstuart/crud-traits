@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crud_traits::{BelongsTo, Create, HasMany, Meta, Read};
+use crud_traits::{BelongsTo, Create, HasMany, Mapped, Meta, Read};
 use crud_traits_macros::{belongs_to, has_many};
 use sqlx::{Error, FromRow, PgPool};
 use std::env;
@@ -118,6 +118,28 @@ impl Read for Dog {
             .bind(ids)
             .fetch_all(store)
             .await
+    }
+}
+
+struct MappedDog {
+    dog: Dog,
+}
+
+#[async_trait]
+impl Mapped for MappedDog {
+    type OriginalModel = Dog;
+    type Error = Error;
+
+    fn original(&self) -> &Dog {
+        &self.dog
+    }
+
+    async fn from(dog: Dog, _: &PgPool) -> Result<Self, Error> {
+        Ok(Self { dog })
+    }
+
+    async fn from_many(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>, Self::Error> {
+        Ok(dogs.into_iter().map(|dog| Self { dog }).collect())
     }
 }
 

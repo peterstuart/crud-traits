@@ -56,7 +56,7 @@ pub trait Create
 where
     Self: Meta + Sized,
 {
-    type Input;
+    type Input: Send + Sync;
 
     async fn create(input: Self::Input, store: &Self::Store) -> Result<Self, Self::Error>;
 }
