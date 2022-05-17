@@ -22,7 +22,7 @@ use std::{collections::HashMap, hash::Hash};
 /// }
 /// ```
 pub trait Meta {
-    type Id: 'static + Send + Sync;
+    type Id: 'static + Clone + Eq + Hash + Send + Sync;
     type Store: Send + Sync;
     type Error;
 
