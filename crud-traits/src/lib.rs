@@ -15,7 +15,7 @@ pub use delete::{Delete, DeleteSelf};
 pub use has_many::HasMany;
 pub use has_many_and_belongs_to::HasManyAndBelongsTo;
 pub use has_one::HasOne;
-pub use mapped::Mapped;
+pub use mapped::{Mapped, MappedWithParentId};
 pub use meta::{hash_map_by_id, Meta};
 pub use read::Read;
 pub use update::{Update, UpdateSelf};

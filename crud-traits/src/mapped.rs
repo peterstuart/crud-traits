@@ -1,12 +1,17 @@
-use crate::{BelongsTo, Create, Delete, Meta, Read, Update};
+use crate::{hash_map_by_id, BelongsTo, Create, Delete, Meta, Read, Update};
 use async_trait::async_trait;
+use std::collections::HashMap;
 
+/// Allows a type to implement the [`Create`](crate::Create],
+/// [`Read`](crate::Read), [`Update`](crate::Update),
+/// [`Delete`](crate::Delete), and [`BelongsTo`](crate::BelongsTo)
+/// traits by delegating to an underlying type (`OriginalModel`).
 #[async_trait]
-pub trait Mapped: Sized {
+pub trait Mapped: Clone + Send + Sized + Sync {
     type OriginalModel: Meta + Send + Sync;
     type Error: From<<Self::OriginalModel as Meta>::Error>;
 
-    fn original(&self) -> &Self::OriginalModel;
+    fn id(&self) -> <Self::OriginalModel as Meta>::Id;
 
     async fn from(
         value: Self::OriginalModel,
@@ -29,7 +34,7 @@ where
     type Error = MappedModel::Error;
 
     fn id(&self) -> Self::Id {
-        self.original().id()
+        MappedModel::id(self)
     }
 }
 
@@ -101,22 +106,44 @@ where
     }
 }
 
+pub trait MappedWithParentId<Parent>
+where
+    Parent: Meta,
+{
+    fn parent_id(&self) -> <Parent as Meta>::Id;
+}
+
 #[async_trait]
 impl<MappedModel, Parent> BelongsTo<Parent> for MappedModel
 where
-    MappedModel: Mapped,
-    MappedModel::OriginalModel: BelongsTo<Parent>,
-    Parent: Meta + Read + Send + Sync,
+    MappedModel: Mapped + MappedWithParentId<Parent>,
+    <MappedModel as Mapped>::OriginalModel: BelongsTo<Parent> + Clone,
+    Parent: Clone + Meta + Read + Send + Sync,
 {
     fn parent_id(&self) -> <Parent as Meta>::Id {
-        self.original().parent_id()
+        MappedWithParentId::parent_id(self)
     }
 
     async fn for_parent_ids(
         ids: &[Parent::Id],
         store: &Self::Store,
-    ) -> Result<Vec<Self>, Self::Error> {
-        let originals = MappedModel::OriginalModel::for_parent_ids(ids, store).await?;
-        Self::from_many(originals, store).await
+    ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error> {
+        let hash_map = <MappedModel as Mapped>::OriginalModel::for_parent_ids(ids, store).await?;
+        let values: Vec<<MappedModel as Mapped>::OriginalModel> =
+            hash_map.values().flatten().cloned().collect();
+        let values_by_id = hash_map_by_id(Self::from_many(values, store).await?);
+
+        Ok(hash_map
+            .into_iter()
+            .map(|(parent_id, children)| {
+                (
+                    parent_id,
+                    children
+                        .iter()
+                        .flat_map(|child| values_by_id.get(&child.id()).cloned())
+                        .collect(),
+                )
+            })
+            .collect())
     }
 }

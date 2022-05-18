@@ -1,11 +1,15 @@
 use crate::{BelongsTo, Read};
 use async_trait::async_trait;
 
-/// A parent/child relationship where the parent has one child.
+/// Represents a one-to-one relationship between two types.
+///
+/// `HasOne` is the inverse of [`BelongsTo`](crate::BelongsTo).
+///
+/// `Child` refers to the `BelongsTo` type in the relationship.
 #[async_trait]
 pub trait HasOne<Child>
 where
-    Self: Read + Send + Sync,
+    Self: Clone + Read + Send + Sync,
     Child: BelongsTo<Self> + Send,
 {
     async fn child(&self, store: &Child::Store) -> Result<Child, Child::Error> {

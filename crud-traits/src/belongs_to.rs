@@ -1,39 +1,52 @@
-use crate::{Meta, Read};
+use crate::{hash_map_by_id, Meta, Read};
 use async_trait::async_trait;
+use std::collections::HashMap;
 
+/// Represents a one-to-one relationship between two types.
+///
+/// `BelongsTo` is the inverse of [`HasOne`](crate::HasOne) and
+/// [`HasMany`](crate::HasMany). The type which contains the foreign
+/// key of the other type should be the one which implements
+/// `BelongsTo`.
+///
+/// `Parent` refers to the `HasMany`/`HasOne` type in the
+/// relationship.
 #[async_trait]
 pub trait BelongsTo<Parent>
 where
-    Self: Read,
-    Parent: Meta + Read + Send + Sync,
+    Self: Read + Send + Sync,
+    Parent: Clone + Meta + Read + Send + Sync,
     <Parent as Meta>::Id: 'static,
 {
     fn parent_id(&self) -> <Parent as Meta>::Id;
 
-    async fn for_parent_id(id: Parent::Id, store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
-        let ids = vec![id];
-        Self::for_parent_ids(&ids, store).await
-    }
-
-    async fn for_parent(parent: &Parent, store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
-        let ids = vec![parent.id()];
-        Self::for_parent_ids(&ids, store).await
-    }
-
     async fn for_parent_ids(
         ids: &[Parent::Id],
         store: &Self::Store,
-    ) -> Result<Vec<Self>, Self::Error>;
+    ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>;
 
-    async fn for_parents(
-        parents: &[Parent],
-        store: &Self::Store,
-    ) -> Result<Vec<Self>, Self::Error> {
-        let ids: Vec<_> = parents.iter().map(|parent| parent.id()).collect();
-        Self::for_parent_ids(&ids, store).await
+    async fn for_parent_id(id: Parent::Id, store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
+        let ids = vec![id.clone()];
+        Ok(Self::for_parent_ids(&ids, store)
+            .await?
+            .remove(&id)
+            .unwrap_or_default())
     }
 
     async fn parent(&self, store: &Parent::Store) -> Result<Parent, Parent::Error> {
         Parent::read(self.parent_id(), store).await
+    }
+
+    async fn parents_for_many(
+        values: &[Self],
+        store: &Parent::Store,
+    ) -> Result<HashMap<Self::Id, Parent>, Parent::Error> {
+        let parent_ids: Vec<_> = values.iter().map(|child| child.parent_id()).collect();
+        let parents_by_id = hash_map_by_id(Parent::read_many(&parent_ids, store).await?);
+
+        Ok(values
+            .iter()
+            .flat_map(|child| Some((child.id(), parents_by_id.get(&child.parent_id())?.clone())))
+            .collect())
     }
 }

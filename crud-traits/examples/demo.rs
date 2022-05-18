@@ -121,6 +121,7 @@ impl Read for Dog {
     }
 }
 
+#[derive(Clone, Debug)]
 struct MappedDog {
     dog: Dog,
 }
@@ -130,8 +131,8 @@ impl Mapped for MappedDog {
     type OriginalModel = Dog;
     type Error = Error;
 
-    fn original(&self) -> &Dog {
-        &self.dog
+    fn id(&self) -> i32 {
+        self.dog.id
     }
 
     async fn from(dog: Dog, _: &PgPool) -> Result<Self, Error> {
@@ -200,13 +201,13 @@ async fn main() -> anyhow::Result<()> {
     assert_eq!(dog3.parent(&store).await?, person2);
 
     assert_eq!(
-        Dog::for_parent(&person1, &store).await?,
+        Dog::for_parent_id(person1.id, &store).await?,
         vec![dog1.clone(), dog2.clone()]
     );
-    assert_eq!(
-        Dog::for_parents(&vec![person1, person2], &store).await?,
-        vec![dog1, dog2, dog3]
-    );
+
+    let dogs_by_parent_ids = Dog::for_parent_ids(&vec![person1.id, person2.id], &store).await?;
+    assert_eq!(dogs_by_parent_ids.get(&person1.id), Some(&vec![dog1, dog2]));
+    assert_eq!(dogs_by_parent_ids.get(&person2.id), Some(&vec![dog3]));
 
     Ok(())
 }
