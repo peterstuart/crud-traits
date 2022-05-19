@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crud_traits::{BelongsTo, Create, HasMany, Mapped, Meta, Read};
+use crud_traits::{BelongsTo, Create, HasMany, MappedModel, MappedModelWithParentId, Meta, Read};
 use crud_traits_macros::{belongs_to, has_many};
 use sqlx::{Error, FromRow, PgPool};
 use std::env;
@@ -127,7 +127,7 @@ struct MappedDog {
 }
 
 #[async_trait]
-impl Mapped for MappedDog {
+impl MappedModel for MappedDog {
     type OriginalModel = Dog;
     type Error = Error;
 
@@ -135,12 +135,18 @@ impl Mapped for MappedDog {
         self.dog.id
     }
 
-    async fn from(dog: Dog, _: &PgPool) -> Result<Self, Error> {
+    async fn from_model(dog: Dog, _: &PgPool) -> Result<Self, Error> {
         Ok(Self { dog })
     }
 
-    async fn from_many(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>, Self::Error> {
+    async fn from_many(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>, Error> {
         Ok(dogs.into_iter().map(|dog| Self { dog }).collect())
+    }
+}
+
+impl MappedModelWithParentId<Person> for MappedDog {
+    fn parent_id(&self) -> i32 {
+        self.dog.person_id
     }
 }
 

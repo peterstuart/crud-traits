@@ -24,6 +24,9 @@ use std::{collections::HashMap, hash::Hash};
 pub trait Meta {
     type Id: 'static + Clone + Eq + Hash + Send + Sync;
     type Store: Send + Sync;
+
+    /// The error type that will be used in the implementations of any
+    /// of the other traits from this crate.
     type Error;
 
     /// A unique ID for the record.

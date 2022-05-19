@@ -18,7 +18,7 @@ where
     Parent: Clone + Meta + Read + Send + Sync,
     <Parent as Meta>::Id: 'static,
 {
-    fn parent_id(&self) -> <Parent as Meta>::Id;
+    fn parent_id(&self) -> Parent::Id;
 
     async fn for_parent_ids(
         ids: &[Parent::Id],

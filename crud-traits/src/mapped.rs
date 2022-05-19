@@ -7,13 +7,13 @@ use std::collections::HashMap;
 /// [`Delete`](crate::Delete), and [`BelongsTo`](crate::BelongsTo)
 /// traits by delegating to an underlying type (`OriginalModel`).
 #[async_trait]
-pub trait Mapped: Clone + Send + Sized + Sync {
+pub trait MappedModel: Clone + Send + Sized + Sync {
     type OriginalModel: Meta + Send + Sync;
     type Error: From<<Self::OriginalModel as Meta>::Error>;
 
     fn id(&self) -> <Self::OriginalModel as Meta>::Id;
 
-    async fn from(
+    async fn from_model(
         value: Self::OriginalModel,
         store: &<Self::OriginalModel as Meta>::Store,
     ) -> Result<Self, Self::Error>;
@@ -25,88 +25,88 @@ pub trait Mapped: Clone + Send + Sized + Sync {
 }
 
 #[async_trait]
-impl<MappedModel> Meta for MappedModel
+impl<T> Meta for T
 where
-    MappedModel: Mapped,
+    T: MappedModel,
 {
-    type Id = <MappedModel::OriginalModel as Meta>::Id;
-    type Store = <MappedModel::OriginalModel as Meta>::Store;
-    type Error = MappedModel::Error;
+    type Id = <T::OriginalModel as Meta>::Id;
+    type Store = <T::OriginalModel as Meta>::Store;
+    type Error = T::Error;
 
     fn id(&self) -> Self::Id {
-        MappedModel::id(self)
+        T::id(self)
     }
 }
 
 #[async_trait]
-impl<MappedModel> Create for MappedModel
+impl<T> Create for T
 where
-    MappedModel: Mapped,
-    MappedModel::OriginalModel: Create,
+    T: MappedModel,
+    T::OriginalModel: Create,
 {
-    type Input = <MappedModel::OriginalModel as Create>::Input;
+    type Input = <T::OriginalModel as Create>::Input;
 
     async fn create(input: Self::Input, store: &Self::Store) -> Result<Self, Self::Error> {
-        let original = MappedModel::OriginalModel::create(input, store).await?;
-        Self::from(original, store).await
+        let original = T::OriginalModel::create(input, store).await?;
+        Self::from_model(original, store).await
     }
 }
 
 #[async_trait]
-impl<MappedModel> Read for MappedModel
+impl<T> Read for T
 where
-    MappedModel: Mapped,
-    MappedModel::OriginalModel: Read,
+    T: MappedModel,
+    T::OriginalModel: Read,
 {
     async fn read(id: Self::Id, store: &Self::Store) -> Result<Self, Self::Error> {
-        let original = MappedModel::OriginalModel::read(id, store).await?;
-        Self::from(original, store).await
+        let original = T::OriginalModel::read(id, store).await?;
+        Self::from_model(original, store).await
     }
 
     async fn read_optional(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error> {
-        let original = MappedModel::OriginalModel::read_optional(id, store).await?;
+        let original = T::OriginalModel::read_optional(id, store).await?;
         Ok(match original {
-            Some(original) => Some(Self::from(original, store).await?),
+            Some(original) => Some(Self::from_model(original, store).await?),
             None => None,
         })
     }
 
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
-        let originals = MappedModel::OriginalModel::read_many(ids, store).await?;
+        let originals = T::OriginalModel::read_many(ids, store).await?;
         Self::from_many(originals, store).await
     }
 }
 
 #[async_trait]
-impl<MappedModel> Update for MappedModel
+impl<T> Update for T
 where
-    MappedModel: Mapped,
-    MappedModel::OriginalModel: Update,
+    T: MappedModel,
+    T::OriginalModel: Update,
 {
-    type Input = <MappedModel::OriginalModel as Update>::Input;
+    type Input = <T::OriginalModel as Update>::Input;
 
     async fn update(
         id: Self::Id,
         input: Self::Input,
         store: &Self::Store,
     ) -> Result<Self, Self::Error> {
-        let original = MappedModel::OriginalModel::update(id, input, store).await?;
-        Self::from(original, store).await
+        let original = T::OriginalModel::update(id, input, store).await?;
+        Self::from_model(original, store).await
     }
 }
 
 #[async_trait]
-impl<MappedModel> Delete for MappedModel
+impl<T> Delete for T
 where
-    MappedModel: Mapped,
-    MappedModel::OriginalModel: Delete,
+    T: MappedModel,
+    T::OriginalModel: Delete,
 {
     async fn delete(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error> {
-        Ok(MappedModel::OriginalModel::delete(id, store).await?)
+        Ok(T::OriginalModel::delete(id, store).await?)
     }
 }
 
-pub trait MappedWithParentId<Parent>
+pub trait MappedModelWithParentId<Parent>
 where
     Parent: Meta,
 {
@@ -114,22 +114,22 @@ where
 }
 
 #[async_trait]
-impl<MappedModel, Parent> BelongsTo<Parent> for MappedModel
+impl<T, Parent> BelongsTo<Parent> for T
 where
-    MappedModel: Mapped + MappedWithParentId<Parent>,
-    <MappedModel as Mapped>::OriginalModel: BelongsTo<Parent> + Clone,
+    T: MappedModel + MappedModelWithParentId<Parent>,
+    <T as MappedModel>::OriginalModel: BelongsTo<Parent> + Clone,
     Parent: Clone + Meta + Read + Send + Sync,
 {
     fn parent_id(&self) -> <Parent as Meta>::Id {
-        MappedWithParentId::parent_id(self)
+        MappedModelWithParentId::parent_id(self)
     }
 
     async fn for_parent_ids(
         ids: &[Parent::Id],
         store: &Self::Store,
     ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error> {
-        let hash_map = <MappedModel as Mapped>::OriginalModel::for_parent_ids(ids, store).await?;
-        let values: Vec<<MappedModel as Mapped>::OriginalModel> =
+        let hash_map = <T as MappedModel>::OriginalModel::for_parent_ids(ids, store).await?;
+        let values: Vec<<T as MappedModel>::OriginalModel> =
             hash_map.values().flatten().cloned().collect();
         let values_by_id = hash_map_by_id(Self::from_many(values, store).await?);
 
