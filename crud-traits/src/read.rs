@@ -66,4 +66,11 @@ where
     async fn maybe_read(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error>;
 
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error>;
+
+    async fn reload(&mut self, store: &Self::Store) -> Result<(), Self::Error> {
+        let id = self.id();
+        *self = Self::read(id, store).await?;
+
+        Ok(())
+    }
 }

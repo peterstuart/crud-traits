@@ -207,11 +207,11 @@ async fn main() -> anyhow::Result<()> {
     assert_eq!(dog3.parent(&store).await?, person2);
 
     assert_eq!(
-        Dog::for_parent_id(person1.id, &store).await?,
+        Dog::for_parent(&person1, &store).await?,
         vec![dog1.clone(), dog2.clone()]
     );
 
-    let dogs_by_parent_ids = Dog::for_parent_ids(&vec![person1.id, person2.id], &store).await?;
+    let dogs_by_parent_ids = Dog::for_parents(&vec![person1.id, person2.id], &store).await?;
     assert_eq!(dogs_by_parent_ids.get(&person1.id), Some(&vec![dog1, dog2]));
     assert_eq!(dogs_by_parent_ids.get(&person2.id), Some(&vec![dog3]));
 

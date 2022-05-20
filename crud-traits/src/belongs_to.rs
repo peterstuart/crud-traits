@@ -1,4 +1,4 @@
-use crate::{hash_map_by_id, Meta, Read};
+use crate::{hash_map_by_id, IntoId, Meta, Read};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -19,6 +19,7 @@ where
     Parent: Clone + Meta + Read + Send + Sync,
     Parent::Id: 'static,
 {
+    /// The foreign key of the parent type.
     fn parent_id(&self) -> Parent::Id;
 
     async fn for_parent_ids(
@@ -26,12 +27,27 @@ where
         store: &Self::Store,
     ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>;
 
-    async fn for_parent_id(id: Parent::Id, store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
+    async fn for_parent<T>(parent: &T, store: &Self::Store) -> Result<Vec<Self>, Self::Error>
+    where
+        T: IntoId<Parent::Id> + Send + Sync,
+    {
+        let id = parent.into_id();
         let ids = vec![id.clone()];
         Ok(Self::for_parent_ids(&ids, store)
             .await?
             .remove(&id)
             .unwrap_or_default())
+    }
+
+    async fn for_parents<T>(
+        parents: &[T],
+        store: &Self::Store,
+    ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>
+    where
+        T: IntoId<Parent::Id> + Send + Sync,
+    {
+        let ids: Vec<_> = parents.iter().map(|parent| parent.into_id()).collect();
+        Self::for_parent_ids(&ids, store).await
     }
 
     async fn parent(&self, store: &Parent::Store) -> Result<Parent, Parent::Error> {
