@@ -37,7 +37,7 @@ use async_trait::async_trait;
 ///             .await
 ///     }
 ///
-///     async fn read_optional(id: i32, store: &PgPool) -> Result<Option<Self>, Error>
+///     async fn maybe_read(id: i32, store: &PgPool) -> Result<Option<Self>, Error>
 ///     {
 ///         sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
 ///             .bind(id)
@@ -63,7 +63,7 @@ where
 {
     async fn read(id: Self::Id, store: &Self::Store) -> Result<Self, Self::Error>;
 
-    async fn read_optional(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error>;
+    async fn maybe_read(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error>;
 
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error>;
 }

@@ -57,10 +57,20 @@ where
             .map(|(parent_id, child_ids)| {
                 let children = child_ids
                     .into_iter()
-                    .flat_map(|child_id| children_by_id.get(&child_id).cloned())
+                    .filter_map(|child_id| children_by_id.get(&child_id).cloned())
                     .collect();
                 (parent_id, children)
             })
             .collect())
+    }
+
+    async fn for_parent_id(
+        id: Parent::Id,
+        store: &Parent::Store,
+    ) -> Result<Vec<Self>, Self::Error> {
+        Ok(Self::for_parent_ids(&[id.clone()], store)
+            .await?
+            .remove(&id)
+            .unwrap_or_default())
     }
 }

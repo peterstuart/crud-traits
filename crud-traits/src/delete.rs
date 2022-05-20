@@ -30,7 +30,7 @@ use crate::Meta;
 ///
 /// #[async_trait]
 /// impl Delete for User {
-///     async fn delete(id: i32, store: &PgPool) -> Result<(), Error>
+///     async fn delete_by_id(id: i32, store: &PgPool) -> Result<(), Error>
 ///     {
 ///         sqlx::query("DELETE FROM users WHERE id = $1")
 ///             .bind(id)
@@ -45,23 +45,10 @@ pub trait Delete
 where
     Self: Meta + Sized,
 {
-    async fn delete(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error>;
-}
+    async fn delete_by_id(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error>;
 
-#[async_trait]
-pub trait DeleteSelf
-where
-    Self: Meta + Delete,
-{
     async fn delete(self, store: &Self::Store) -> Result<(), Self::Error> {
         let id = self.id();
-        <Self as Delete>::delete(id, store).await
+        <Self as Delete>::delete_by_id(id, store).await
     }
-}
-
-impl<T> DeleteSelf for T
-where
-    T: Delete,
-    <T as Meta>::Id: Send,
-{
 }

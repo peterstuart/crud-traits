@@ -56,9 +56,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
 
                 for value in values {
                     let parent_id = crud_traits::BelongsTo::<#parent>::parent_id(&value);
-                    let mut children: Vec<Self> = hash_map.remove(&parent_id).unwrap_or_default();
-                    children.push(value);
-                    hash_map.insert(parent_id, children);
+                    hash_map.entry(parent_id).or_insert(Vec::new()).push(value);
                 }
 
                 Ok(hash_map)

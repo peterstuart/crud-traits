@@ -18,7 +18,7 @@ pub trait MappedModel: Clone + Send + Sized + Sync {
         store: &<Self::OriginalModel as Meta>::Store,
     ) -> Result<Self, Self::Error>;
 
-    async fn from_many(
+    async fn from_models(
         values: Vec<Self::OriginalModel>,
         store: &<Self::OriginalModel as Meta>::Store,
     ) -> Result<Vec<Self>, Self::Error>;
@@ -63,8 +63,8 @@ where
         Self::from_model(original, store).await
     }
 
-    async fn read_optional(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error> {
-        let original = T::OriginalModel::read_optional(id, store).await?;
+    async fn maybe_read(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error> {
+        let original = T::OriginalModel::maybe_read(id, store).await?;
         Ok(match original {
             Some(original) => Some(Self::from_model(original, store).await?),
             None => None,
@@ -73,7 +73,7 @@ where
 
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
         let originals = T::OriginalModel::read_many(ids, store).await?;
-        Self::from_many(originals, store).await
+        Self::from_models(originals, store).await
     }
 }
 
@@ -85,12 +85,12 @@ where
 {
     type Input = <T::OriginalModel as Update>::Input;
 
-    async fn update(
+    async fn update_by_id(
         id: Self::Id,
         input: Self::Input,
         store: &Self::Store,
     ) -> Result<Self, Self::Error> {
-        let original = T::OriginalModel::update(id, input, store).await?;
+        let original = T::OriginalModel::update_by_id(id, input, store).await?;
         Self::from_model(original, store).await
     }
 }
@@ -101,8 +101,8 @@ where
     T: MappedModel,
     T::OriginalModel: Delete,
 {
-    async fn delete(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error> {
-        Ok(T::OriginalModel::delete(id, store).await?)
+    async fn delete_by_id(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error> {
+        Ok(T::OriginalModel::delete_by_id(id, store).await?)
     }
 }
 
@@ -131,7 +131,7 @@ where
         let hash_map = <T as MappedModel>::OriginalModel::for_parent_ids(ids, store).await?;
         let values: Vec<<T as MappedModel>::OriginalModel> =
             hash_map.values().flatten().cloned().collect();
-        let values_by_id = hash_map_by_id(Self::from_many(values, store).await?);
+        let values_by_id = hash_map_by_id(Self::from_models(values, store).await?);
 
         Ok(hash_map
             .into_iter()
@@ -140,7 +140,7 @@ where
                     parent_id,
                     children
                         .iter()
-                        .flat_map(|child| values_by_id.get(&child.id()).cloned())
+                        .filter_map(|child| values_by_id.get(&child.id()).cloned())
                         .collect(),
                 )
             })

@@ -2,7 +2,8 @@ use crate::{hash_map_by_id, Meta, Read};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-/// Represents a one-to-one relationship between two types.
+/// Represents one side of a a one-to-one or one-to-many relationship
+/// between two types.
 ///
 /// `BelongsTo` is the inverse of [`HasOne`](crate::HasOne) and
 /// [`HasMany`](crate::HasMany). The type which contains the foreign
@@ -16,7 +17,7 @@ pub trait BelongsTo<Parent>
 where
     Self: Read + Send + Sync,
     Parent: Clone + Meta + Read + Send + Sync,
-    <Parent as Meta>::Id: 'static,
+    Parent::Id: 'static,
 {
     fn parent_id(&self) -> Parent::Id;
 
@@ -46,7 +47,7 @@ where
 
         Ok(values
             .iter()
-            .flat_map(|child| Some((child.id(), parents_by_id.get(&child.parent_id())?.clone())))
+            .filter_map(|child| Some((child.id(), parents_by_id.get(&child.parent_id())?.clone())))
             .collect())
     }
 }

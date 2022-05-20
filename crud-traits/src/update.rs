@@ -37,7 +37,7 @@ use crate::Meta;
 /// impl Update for User {
 ///     type Input = Input;
 ///
-///     async fn update(id: i32, input: Input, store: &PgPool) -> Result<Self, Error>
+///     async fn update_by_id(id: i32, input: Input, store: &PgPool) -> Result<Self, Error>
 ///     {
 ///         sqlx::query_as::<_, User>(
 ///             "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3 RETURNING *",
@@ -57,25 +57,17 @@ where
 {
     type Input: Send;
 
-    async fn update(
+    async fn update_by_id(
         id: Self::Id,
         input: Self::Input,
         store: &Self::Store,
     ) -> Result<Self, Self::Error>;
-}
 
-#[async_trait]
-pub trait UpdateSelf
-where
-    Self: Update,
-{
     async fn update(&mut self, input: Self::Input, store: &Self::Store) -> Result<(), Self::Error> {
         let id = self.id();
 
-        *self = <Self as Update>::update(id, input, store).await?;
+        *self = <Self as Update>::update_by_id(id, input, store).await?;
 
         Ok(())
     }
 }
-
-impl<T> UpdateSelf for T where T: Update {}

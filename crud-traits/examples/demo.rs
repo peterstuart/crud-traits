@@ -46,7 +46,7 @@ impl Read for Person {
             .await
     }
 
-    async fn read_optional(id: i32, store: &Self::Store) -> Result<Option<Self>, Error> {
+    async fn maybe_read(id: i32, store: &Self::Store) -> Result<Option<Self>, Error> {
         sqlx::query_as::<_, Person>("SELECT * FROM people WHERE id = $1")
             .bind(id)
             .fetch_optional(store)
@@ -106,7 +106,7 @@ impl Read for Dog {
             .await
     }
 
-    async fn read_optional(id: i32, store: &PgPool) -> Result<Option<Self>, Error> {
+    async fn maybe_read(id: i32, store: &PgPool) -> Result<Option<Self>, Error> {
         sqlx::query_as::<_, Dog>("SELECT * FROM dogs WHERE id = $1")
             .bind(id)
             .fetch_optional(store)
@@ -139,7 +139,7 @@ impl MappedModel for MappedDog {
         Ok(Self { dog })
     }
 
-    async fn from_many(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>, Error> {
+    async fn from_models(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>, Error> {
         Ok(dogs.into_iter().map(|dog| Self { dog }).collect())
     }
 }
