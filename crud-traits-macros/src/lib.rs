@@ -186,7 +186,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 store: &<Self as crud_traits::Meta>::Store,
             ) -> Result<Vec<Self>, <Self as crud_traits::Meta>::Error>
             where
-                T: crud_traits::IntoId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
+                T: crud_traits::AsId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
             {
                 <Self as crud_traits::BelongsTo<#parent>>::for_parent(parent, store).await
             }
@@ -199,7 +199,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 <Self as crud_traits::Meta>::Error,
                 >
             where
-                T: crud_traits::IntoId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
+                T: crud_traits::AsId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
             {
                 <Self as crud_traits::BelongsTo<#parent>>::for_parents(parents, store).await
             }

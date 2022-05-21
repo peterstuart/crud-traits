@@ -1,4 +1,4 @@
-use crate::{hash_map_by_id, IntoId, Meta, Read};
+use crate::{hash_map_by_id, AsId, Meta, Read};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -29,9 +29,9 @@ where
 
     async fn for_parent<T>(parent: &T, store: &Self::Store) -> Result<Vec<Self>, Self::Error>
     where
-        T: IntoId<Parent::Id> + Send + Sync,
+        T: AsId<Parent::Id> + Send + Sync,
     {
-        let id = parent.into_id();
+        let id = parent.as_id();
         let ids = vec![id.clone()];
         Ok(Self::for_parent_ids(&ids, store)
             .await?
@@ -44,9 +44,9 @@ where
         store: &Self::Store,
     ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>
     where
-        T: IntoId<Parent::Id> + Send + Sync,
+        T: AsId<Parent::Id> + Send + Sync,
     {
-        let ids: Vec<_> = parents.iter().map(|parent| parent.into_id()).collect();
+        let ids: Vec<_> = parents.iter().map(|parent| parent.as_id()).collect();
         Self::for_parent_ids(&ids, store).await
     }
 
