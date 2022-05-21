@@ -74,7 +74,7 @@ pub fn sqlx_delete(input: TokenStream) -> TokenStream {
             async fn delete_by_id(
                 id: <Self as crud_traits::Meta>::Id,
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> Result<(), sqlx::Error> {
+            ) -> std::result::Result<(), sqlx::Error> {
                 sqlx::query_as!(Self, #query, id)
                     .execute(store)
                     .await?;
@@ -149,7 +149,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
             async fn for_parent_ids(
                 ids: &[<#parent as crud_traits::Meta>::Id],
                 store: &<#parent as crud_traits::Meta>::Store
-            ) -> Result<std::collections::HashMap<<#parent as crud_traits::Meta>::Id, Vec<Self>>, <Self as crud_traits::Meta>::Error> {
+            ) -> std::result::Result<std::collections::HashMap<<#parent as crud_traits::Meta>::Id, Vec<Self>>, <Self as crud_traits::Meta>::Error> {
                 let values = sqlx::query_as::<_, Self>(#query)
                     .bind(ids)
                     .fetch_all(store)
@@ -174,7 +174,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
             pub async fn #for_parent_ids_alias(
                 ids: &[<#parent as crud_traits::Meta>::Id],
                 store: &<Self as crud_traits::Meta>::Store,
-            ) -> Result<
+            ) -> std::result::Result<
                     std::collections::HashMap<<#parent as crud_traits::Meta>::Id, Vec<Self>>,
                 <Self as crud_traits::Meta>::Error,
                 > {
@@ -184,7 +184,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
             pub async fn #for_parent_alias<T>(
                 parent: &T,
                 store: &<Self as crud_traits::Meta>::Store,
-            ) -> Result<Vec<Self>, <Self as crud_traits::Meta>::Error>
+            ) -> std::result::Result<Vec<Self>, <Self as crud_traits::Meta>::Error>
             where
                 T: crud_traits::AsId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
             {
@@ -194,7 +194,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
             pub async fn #for_parents_alias<T>(
                 parents: &[T],
                 store: &<Self as crud_traits::Meta>::Store,
-            ) -> Result<
+            ) -> std::result::Result<
                     std::collections::HashMap<<#parent as crud_traits::Meta>::Id, Vec<Self>>,
                 <Self as crud_traits::Meta>::Error,
                 >
@@ -207,14 +207,14 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
             pub async fn #parent_alias(
                 &self,
                 store: &<#parent as crud_traits::Meta>::Store,
-            ) -> Result<#parent, <#parent as crud_traits::Meta>::Error> {
+            ) -> std::result::Result<#parent, <#parent as crud_traits::Meta>::Error> {
                 <Self as crud_traits::BelongsTo<#parent>>::parent(&self, store).await
             }
 
             pub async fn #parents_for_many_alias(
                 values: &[Self],
                 store: &<#parent as crud_traits::Meta>::Store,
-            ) -> Result<
+            ) -> std::result::Result<
                     std::collections::HashMap<<Self as crud_traits::Meta>::Id, #parent>,
                 <#parent as crud_traits::Meta>::Error,
                 > {
@@ -264,7 +264,7 @@ pub fn has_many(args: TokenStream, input: TokenStream) -> TokenStream {
         impl crud_traits::HasMany<#child> for #parent {}
 
         impl #parent {
-            pub async fn #children_alias(&self, store: &<Self as crud_traits::Meta>::Store) -> Result<Vec<#child>, <#child as crud_traits::Meta>::Error> {
+            pub async fn #children_alias(&self, store: &<Self as crud_traits::Meta>::Store) -> std::result::Result<Vec<#child>, <#child as crud_traits::Meta>::Error> {
                 <Self as crud_traits::HasMany<#child>>::children(&self, store).await
             }
         }
@@ -307,7 +307,7 @@ pub fn has_one(args: TokenStream, input: TokenStream) -> TokenStream {
         impl crud_traits::HasOne<#child> for #parent {}
 
         impl #parent {
-            pub async fn #child_alias(&self, store: &<Self as crud_traits::Meta>::Store) -> Result<#child, <#child as crud_traits::Meta>::Error> {
+            pub async fn #child_alias(&self, store: &<Self as crud_traits::Meta>::Store) -> std::result::Result<#child, <#child as crud_traits::Meta>::Error> {
                 <Self as crud_traits::HasOne<#child>>::child(&self, store).await
             }
         }
