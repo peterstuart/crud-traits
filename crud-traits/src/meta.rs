@@ -36,7 +36,7 @@ pub trait Meta {
 }
 
 /// Produces a hash map of IDs to values given some values which
-/// implement [`Id`](crate::Id).
+/// implement [`Meta`](crate::Meta).
 pub fn hash_map_by_id<T>(values: Vec<T>) -> HashMap<T::Id, T>
 where
     T: Meta,

@@ -9,3 +9,9 @@ CREATE TABLE dogs (
     name text NOT NULL
 );
 
+CREATE TABLE beds (
+    id serial PRIMARY KEY,
+    dog_id int NOT NULL REFERENCES dogs (id),
+    location text NOT NULL
+);
+

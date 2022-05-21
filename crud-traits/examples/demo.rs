@@ -1,11 +1,12 @@
 use async_trait::async_trait;
-use crud_traits::{BelongsTo, Create, HasMany, MappedModel, MappedModelWithParentId, Meta, Read};
-use crud_traits_macros::{belongs_to, has_many};
+use crud_traits::{Create, MappedModel, MappedModelWithParentId, Meta};
+use crud_traits_macros::{belongs_to, has_many, has_one, Read};
 use sqlx::{Error, FromRow, PgPool};
 use std::env;
 
-#[derive(Clone, Debug, Eq, FromRow, PartialEq)]
+#[derive(Clone, Debug, Eq, Read, FromRow, PartialEq)]
 #[has_many(child = "Dog")]
+#[crud(table = "people")]
 struct Person {
     id: i32,
     name: String,
@@ -37,32 +38,10 @@ impl Create for Person {
     }
 }
 
-#[async_trait]
-impl Read for Person {
-    async fn read(id: i32, store: &PgPool) -> Result<Self, Error> {
-        sqlx::query_as::<_, Person>("SELECT * FROM people WHERE id = $1")
-            .bind(id)
-            .fetch_one(store)
-            .await
-    }
-
-    async fn maybe_read(id: i32, store: &Self::Store) -> Result<Option<Self>, Error> {
-        sqlx::query_as::<_, Person>("SELECT * FROM people WHERE id = $1")
-            .bind(id)
-            .fetch_optional(store)
-            .await
-    }
-
-    async fn read_many(ids: &[i32], store: &PgPool) -> Result<Vec<Self>, Error> {
-        sqlx::query_as::<_, Person>("SELECT * FROM people WHERE id = ANY($1)")
-            .bind(ids)
-            .fetch_all(store)
-            .await
-    }
-}
-
-#[derive(Clone, Debug, Eq, FromRow, PartialEq)]
-#[belongs_to(parent = "Person", table = "dogs")]
+#[derive(Clone, Debug, Eq, Read, FromRow, PartialEq)]
+#[belongs_to(parent = "Person", plural_alias = "people", table = "dogs")]
+#[has_one(child = "Bed")]
+#[crud(table = "dogs")]
 struct Dog {
     id: i32,
     person_id: i32,
@@ -97,30 +76,6 @@ impl Create for Dog {
     }
 }
 
-#[async_trait]
-impl Read for Dog {
-    async fn read(id: i32, store: &PgPool) -> Result<Self, Error> {
-        sqlx::query_as::<_, Dog>("SELECT * FROM dogs WHERE id = $1")
-            .bind(id)
-            .fetch_one(store)
-            .await
-    }
-
-    async fn maybe_read(id: i32, store: &PgPool) -> Result<Option<Self>, Error> {
-        sqlx::query_as::<_, Dog>("SELECT * FROM dogs WHERE id = $1")
-            .bind(id)
-            .fetch_optional(store)
-            .await
-    }
-
-    async fn read_many(ids: &[i32], store: &PgPool) -> Result<Vec<Self>, Error> {
-        sqlx::query_as::<_, Dog>("SELECT * FROM dogs WHERE id = ANY($1)")
-            .bind(ids)
-            .fetch_all(store)
-            .await
-    }
-}
-
 #[derive(Clone, Debug)]
 struct MappedDog {
     dog: Dog,
@@ -147,6 +102,25 @@ impl MappedModel for MappedDog {
 impl MappedModelWithParentId<Person> for MappedDog {
     fn parent_id(&self) -> i32 {
         self.dog.person_id
+    }
+}
+
+#[derive(Clone, Debug, Eq, Read, FromRow, PartialEq)]
+#[belongs_to(parent = "Dog", table = "beds")]
+#[crud(table = "beds")]
+struct Bed {
+    id: i32,
+    dog_id: i32,
+    location: String,
+}
+
+impl Meta for Bed {
+    type Id = i32;
+    type Store = PgPool;
+    type Error = Error;
+
+    fn id(&self) -> i32 {
+        self.id
     }
 }
 
@@ -197,23 +171,23 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     assert_eq!(
-        person1.children(&store).await?,
+        person1.dogs(&store).await?,
         vec![dog1.clone(), dog2.clone()]
     );
-    assert_eq!(person2.children(&store).await?, vec![dog3.clone()]);
+    assert_eq!(person2.dogs(&store).await?, vec![dog3.clone()]);
 
-    assert_eq!(dog1.parent(&store).await?, person1);
-    assert_eq!(dog2.parent(&store).await?, person1);
-    assert_eq!(dog3.parent(&store).await?, person2);
+    assert_eq!(dog1.person(&store).await?, person1);
+    assert_eq!(dog2.person(&store).await?, person1);
+    assert_eq!(dog3.person(&store).await?, person2);
 
     assert_eq!(
-        Dog::for_parent(&person1, &store).await?,
+        Dog::for_person(&person1, &store).await?,
         vec![dog1.clone(), dog2.clone()]
     );
 
-    let dogs_by_parent_ids = Dog::for_parents(&vec![person1.id, person2.id], &store).await?;
-    assert_eq!(dogs_by_parent_ids.get(&person1.id), Some(&vec![dog1, dog2]));
-    assert_eq!(dogs_by_parent_ids.get(&person2.id), Some(&vec![dog3]));
+    let dogs_by_person_ids = Dog::for_people(&vec![person1.id, person2.id], &store).await?;
+    assert_eq!(dogs_by_person_ids.get(&person1.id), Some(&vec![dog1, dog2]));
+    assert_eq!(dogs_by_person_ids.get(&person2.id), Some(&vec![dog3]));
 
     Ok(())
 }

@@ -61,12 +61,17 @@ pub trait Read
 where
     Self: Meta + Sized,
 {
+    /// Read a single value from the database, returning an error if
+    /// it is not present.
     async fn read(id: Self::Id, store: &Self::Store) -> Result<Self, Self::Error>;
 
+    /// Reads an optional value from the database.
     async fn maybe_read(id: Self::Id, store: &Self::Store) -> Result<Option<Self>, Self::Error>;
 
+    /// Reads many values from the database.
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error>;
 
+    /// Update `self` by reloading its data using [`read`](Read::read).
     async fn reload(&mut self, store: &Self::Store) -> Result<(), Self::Error> {
         let id = self.id();
         *self = Self::read(id, store).await?;
