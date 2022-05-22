@@ -49,7 +49,7 @@ where
         T: AsId<Id = Relation::Id> + Send + Sync,
     {
         let id = relation.as_id();
-        Ok(Self::ids_for_relation_ids(&vec![id.clone()], store)
+        Ok(Self::ids_for_relation_ids(&[id.clone()], store)
             .await?
             .remove(&id)
             .unwrap_or_default())

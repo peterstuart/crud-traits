@@ -58,15 +58,21 @@ where
         Parent::read(self.parent_id(), store).await
     }
 
-    async fn parents_for_many(
-        values: &[Self],
+    async fn parents_for_many<'a, I>(
+        values: I,
         store: &Parent::Store,
-    ) -> Result<HashMap<Self::Id, Parent>, Parent::Error> {
-        let parent_ids: Vec<_> = values.iter().map(|child| child.parent_id()).collect();
+    ) -> Result<HashMap<Self::Id, Parent>, Parent::Error>
+    where
+        Self: 'a,
+        I: Clone + IntoIterator<Item = &'a Self> + Send + Sync,
+    {
+        let children: Vec<_> = values.into_iter().collect();
+
+        let parent_ids: Vec<_> = children.iter().map(|child| child.parent_id()).collect();
         let parents_by_id = hash_map_by_id(Parent::read_many(&parent_ids, store).await?);
 
-        Ok(values
-            .iter()
+        Ok(children
+            .into_iter()
             .filter_map(|child| Some((child.id(), parents_by_id.get(&child.parent_id())?.clone())))
             .collect())
     }
