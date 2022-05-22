@@ -67,7 +67,6 @@ where
         I: Clone + IntoIterator<Item = &'a Self> + Send + Sync,
     {
         let children: Vec<_> = values.into_iter().collect();
-
         let parent_ids: Vec<_> = children.iter().map(|child| child.parent_id()).collect();
         let parents_by_id = hash_map_by_id(Parent::read_many(&parent_ids, store).await?);
 
