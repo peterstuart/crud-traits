@@ -191,15 +191,16 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 <Self as crud_traits::BelongsTo<#parent>>::for_parent(parent, store).await
             }
 
-            pub async fn #for_parents_alias<T>(
-                parents: &[T],
+            pub async fn #for_parents_alias<'a, T, I>(
+                parents: I,
                 store: &<Self as crud_traits::Meta>::Store,
             ) -> std::result::Result<
                     std::collections::HashMap<<#parent as crud_traits::Meta>::Id, Vec<Self>>,
                 <Self as crud_traits::Meta>::Error,
                 >
             where
-                T: crud_traits::AsId<Id = <#parent as crud_traits::Meta>::Id> + Send + Sync,
+                T: 'a + crud_traits::AsId<Id = <#parent as crud_traits::Meta>::Id> + Send + Sync,
+                I: std::iter::IntoIterator<Item = &'a T> + Send + Sync,
             {
                 <Self as crud_traits::BelongsTo<#parent>>::for_parents(parents, store).await
             }

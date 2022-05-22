@@ -215,7 +215,9 @@ async fn main() -> anyhow::Result<()> {
         vec![dog1.clone(), dog2.clone()]
     );
 
-    let dogs_by_person_ids = Dog::for_people(&[person1.id, person2.id], &store).await?;
+    let people = vec![person1.clone(), person2.clone()];
+
+    let dogs_by_person_ids = Dog::for_people(&people, &store).await?;
     assert_eq!(dogs_by_person_ids.get(&person1.id), Some(&vec![dog1, dog2]));
     assert_eq!(dogs_by_person_ids.get(&person2.id), Some(&vec![dog3]));
 

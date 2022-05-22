@@ -39,27 +39,13 @@ where
             .unwrap_or_default())
     }
 
-    async fn for_parents<T>(
-        parents: &[T],
+    async fn for_parents<'a, T, I>(
+        parents: I,
         store: &Self::Store,
     ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>
     where
-        T: AsId<Id = Parent::Id> + Send + Sync,
-    {
-        let ids: Vec<_> = parents
-            .into_iter()
-            .map(|parent| parent.borrow().as_id())
-            .collect();
-        Self::for_parent_ids(&ids, store).await
-    }
-
-    async fn for_parents2<T, B>(
-        parents: &[B],
-        store: &Self::Store,
-    ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>
-    where
-        T: AsId<Id = Parent::Id> + Send + Sync,
-        B: Borrow<T> + Send + Sync,
+        T: 'a + AsId<Id = Parent::Id> + Send + Sync,
+        I: IntoIterator<Item = &'a T> + Send + Sync,
     {
         let ids: Vec<_> = parents
             .into_iter()
