@@ -1,6 +1,6 @@
 use crate::{hash_map_by_id, AsId, Meta, Read};
 use async_trait::async_trait;
-use std::collections::HashMap;
+use std::{borrow::Borrow, collections::HashMap};
 
 /// Represents one side of a a one-to-one or one-to-many relationship
 /// between two types.
@@ -29,7 +29,7 @@ where
 
     async fn for_parent<T>(parent: &T, store: &Self::Store) -> Result<Vec<Self>, Self::Error>
     where
-        T: AsId<Parent::Id> + Send + Sync,
+        T: AsId<Id = Parent::Id> + Send + Sync,
     {
         let id = parent.as_id();
         let ids = vec![id.clone()];
@@ -44,9 +44,27 @@ where
         store: &Self::Store,
     ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>
     where
-        T: AsId<Parent::Id> + Send + Sync,
+        T: AsId<Id = Parent::Id> + Send + Sync,
     {
-        let ids: Vec<_> = parents.iter().map(|parent| parent.as_id()).collect();
+        let ids: Vec<_> = parents
+            .into_iter()
+            .map(|parent| parent.borrow().as_id())
+            .collect();
+        Self::for_parent_ids(&ids, store).await
+    }
+
+    async fn for_parents2<T, B>(
+        parents: &[B],
+        store: &Self::Store,
+    ) -> Result<HashMap<Parent::Id, Vec<Self>>, Self::Error>
+    where
+        T: AsId<Id = Parent::Id> + Send + Sync,
+        B: Borrow<T> + Send + Sync,
+    {
+        let ids: Vec<_> = parents
+            .into_iter()
+            .map(|parent| parent.borrow().as_id())
+            .collect();
         Self::for_parent_ids(&ids, store).await
     }
 

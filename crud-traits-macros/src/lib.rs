@@ -36,7 +36,7 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
             async fn maybe_read(
                 id: <Self as crud_traits::Meta>::Id,
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> std::result::Result<Option<Self>, sqlx::Error> {
+            ) -> std::result::Result<std::option::Option<Self>, sqlx::Error> {
                 Ok(
                     sqlx::query_as!(Self, #query_one, id)
                         .fetch_optional(store)
@@ -186,7 +186,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 store: &<Self as crud_traits::Meta>::Store,
             ) -> std::result::Result<Vec<Self>, <Self as crud_traits::Meta>::Error>
             where
-                T: crud_traits::AsId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
+                T: crud_traits::AsId<Id = <#parent as crud_traits::Meta>::Id> + Send + Sync,
             {
                 <Self as crud_traits::BelongsTo<#parent>>::for_parent(parent, store).await
             }
@@ -199,7 +199,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 <Self as crud_traits::Meta>::Error,
                 >
             where
-                T: crud_traits::AsId<<#parent as crud_traits::Meta>::Id> + Send + Sync,
+                T: crud_traits::AsId<Id = <#parent as crud_traits::Meta>::Id> + Send + Sync,
             {
                 <Self as crud_traits::BelongsTo<#parent>>::for_parents(parents, store).await
             }
@@ -307,7 +307,7 @@ pub fn has_one(args: TokenStream, input: TokenStream) -> TokenStream {
         impl crud_traits::HasOne<#child> for #parent {}
 
         impl #parent {
-            pub async fn #child_alias(&self, store: &<Self as crud_traits::Meta>::Store) -> std::result::Result<#child, <#child as crud_traits::Meta>::Error> {
+            pub async fn #child_alias(&self, store: &<Self as crud_traits::Meta>::Store) -> std::result::Result<std::option::Option<#child>, <#child as crud_traits::Meta>::Error> {
                 <Self as crud_traits::HasOne<#child>>::child(&self, store).await
             }
         }

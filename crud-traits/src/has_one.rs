@@ -12,7 +12,7 @@ where
     Self: Clone + Meta + Read + Send + Sync,
     Child: BelongsTo<Self> + Send,
 {
-    async fn child(&self, store: &Child::Store) -> Result<Child, Child::Error> {
-        Ok(Child::for_parent(self, store).await?.remove(0))
+    async fn child(&self, store: &Child::Store) -> Result<Option<Child>, Child::Error> {
+        Ok(Child::for_parent(self, store).await?.into_iter().next())
     }
 }

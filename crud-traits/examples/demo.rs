@@ -124,6 +124,24 @@ impl Meta for Bed {
     }
 }
 
+struct BedInput {
+    dog_id: i32,
+    location: String,
+}
+
+#[async_trait]
+impl Create for Bed {
+    type Input = BedInput;
+
+    async fn create(input: BedInput, store: &PgPool) -> Result<Self, Error> {
+        sqlx::query_as::<_, Bed>("INSERT INTO beds (dog_id, location) VALUES ($1, $2) RETURNING *")
+            .bind(input.dog_id)
+            .bind(input.location)
+            .fetch_one(store)
+            .await
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let store = PgPool::connect(&env::var("DATABASE_URL")?).await?;
@@ -170,6 +188,18 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
+    let bed1 = Bed::create(
+        BedInput {
+            dog_id: dog1.id(),
+            location: "Kitchen".into(),
+        },
+        &store,
+    )
+    .await?;
+
+    assert_eq!(dog1.bed(&store).await?, Some(bed1));
+    assert_eq!(dog2.bed(&store).await?, None);
+
     assert_eq!(
         person1.dogs(&store).await?,
         vec![dog1.clone(), dog2.clone()]
@@ -185,7 +215,7 @@ async fn main() -> anyhow::Result<()> {
         vec![dog1.clone(), dog2.clone()]
     );
 
-    let dogs_by_person_ids = Dog::for_people(&vec![person1.id, person2.id], &store).await?;
+    let dogs_by_person_ids = Dog::for_people(&[person1.id, person2.id], &store).await?;
     assert_eq!(dogs_by_person_ids.get(&person1.id), Some(&vec![dog1, dog2]));
     assert_eq!(dogs_by_person_ids.get(&person2.id), Some(&vec![dog3]));
 
