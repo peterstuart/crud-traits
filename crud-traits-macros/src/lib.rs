@@ -8,6 +8,7 @@ use syn::{parse_macro_input, AttributeArgs, DeriveInput, ItemStruct};
 #[darling(attributes(crud))]
 struct CrudOptions {
     table: String,
+    order_by: Option<String>,
 }
 
 #[proc_macro_derive(Read, attributes(crud))]
@@ -18,6 +19,11 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
 
     let query_one = format!("SELECT * FROM {} WHERE id = $1", options.table);
     let query_many = format!("SELECT * FROM {} WHERE id = ANY($1)", options.table);
+    let query_all = format!(
+        "SELECT * FROM {} ORDER BY {}",
+        options.table,
+        options.order_by.unwrap_or_else(|| "id ASC".into())
+    );
 
     quote! {
         #[async_trait::async_trait]
@@ -55,6 +61,15 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
                 )
             }
 
+            async fn read_all(
+                store: &<Self as crud_traits::Meta>::Store
+            ) -> std::result::Result<Vec<Self>, sqlx::Error> {
+                Ok(
+                    sqlx::query_as!(Self, #query_all)
+                        .fetch_all(store)
+                        .await?,
+                )
+            }
         }
     }
     .into()

@@ -75,6 +75,11 @@ where
         let originals = T::OriginalModel::read_many(ids, store).await?;
         Self::from_models(originals, store).await
     }
+
+    async fn read_all(store: &Self::Store) -> Result<Vec<Self>, Self::Error> {
+        let originals = T::OriginalModel::read_all(store).await?;
+        Self::from_models(originals, store).await
+    }
 }
 
 #[async_trait]

@@ -54,6 +54,14 @@ use async_trait::async_trait;
 ///             .fetch_all(store)
 ///             .await
 ///     }
+///
+///     async fn read_all(
+///         store: &Self::Store,
+///     ) -> Result<Vec<Self>, Self::Error> {
+///         sqlx::query_as::<_, User>("SELECT * FROM users")
+///             .fetch_all(store)
+///             .await
+///     }
 /// }
 /// ```
 #[async_trait]
@@ -70,6 +78,8 @@ where
 
     /// Reads many values from the database.
     async fn read_many(ids: &[Self::Id], store: &Self::Store) -> Result<Vec<Self>, Self::Error>;
+
+    async fn read_all(store: &Self::Store) -> Result<Vec<Self>, Self::Error>;
 
     /// Update `self` by reloading its data using [`read`](Read::read).
     async fn reload(&mut self, store: &Self::Store) -> Result<(), Self::Error> {
