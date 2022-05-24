@@ -221,7 +221,7 @@ pub fn belongs_to(args: TokenStream, input: TokenStream) -> TokenStream {
                 >
             where
                 Self:'a,
-                I: Clone + IntoIterator<Item = &'a Self> + Send + Sync,{
+                I: IntoIterator<Item = &'a Self> + Send + Sync,{
                 <Self as crud_traits::BelongsTo<#parent>>::parents_for_many(values, store).await
             }
         }

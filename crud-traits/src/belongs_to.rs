@@ -64,7 +64,7 @@ where
     ) -> Result<HashMap<Self::Id, Parent>, Parent::Error>
     where
         Self: 'a,
-        I: Clone + IntoIterator<Item = &'a Self> + Send + Sync,
+        I: IntoIterator<Item = &'a Self> + Send + Sync,
     {
         let children: Vec<_> = values.into_iter().collect();
         let parent_ids: Vec<_> = children.iter().map(|child| child.parent_id()).collect();
