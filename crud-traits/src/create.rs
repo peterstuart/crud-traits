@@ -1,3 +1,4 @@
+use crate::Meta;
 use async_trait::async_trait;
 
 /// Create a record.
@@ -9,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// ```
 /// use async_trait::async_trait;
-/// use crud_traits::Create;
+/// use crud_traits::{Create, Meta};
 /// use sqlx::{Error, FromRow, PgPool};
 ///
 /// #[derive(FromRow)]
@@ -17,6 +18,16 @@ use async_trait::async_trait;
 ///     id: i32,
 ///     first_name: String,
 ///     last_name: String,
+/// }
+///
+/// impl Meta for User {
+///     type Id = i32;
+///     type Store = PgPool;
+///     type Error = Error;
+///
+///     fn id(&self) -> i32 {
+///         self.id
+///     }
 /// }
 ///
 /// struct Input {
@@ -27,13 +38,11 @@ use async_trait::async_trait;
 /// #[async_trait]
 /// impl Create for User {
 ///     type Input = Input;
-///     type Store = PgPool;
-///     type Error = Error;
 ///
 ///     async fn create(input: Input, store: &PgPool) -> Result<Self, Error>
 ///     {
 ///         sqlx::query_as::<_, User>(
-///             "INSERT INTO users (first_name, last_name) VALUES (?, ?) RETURNING *",
+///             "INSERT INTO users (first_name, last_name) VALUES ($1, $2) RETURNING *",
 ///         )
 ///         .bind(input.first_name)
 ///         .bind(input.last_name)
@@ -45,11 +54,9 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait Create
 where
-    Self: Sized,
+    Self: Meta + Sized,
 {
-    type Input;
-    type Store: Send + Sync;
-    type Error;
+    type Input: Send + Sync;
 
     async fn create(input: Self::Input, store: &Self::Store) -> Result<Self, Self::Error>;
 }

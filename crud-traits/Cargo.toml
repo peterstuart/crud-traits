@@ -1,0 +1,13 @@
+[package]
+name = "crud-traits"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.53"
+
+[dev-dependencies]
+anyhow = "1.0.57"
+crud-traits-macros = { path = "../crud-traits-macros" }
+sqlx = { version = "0.5.13", features = ["runtime-tokio-rustls", "postgres"] }
+tokio = { version = "1.18.2", features = ["full"] }

@@ -1,27 +1,33 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
-/// Uniquely identify records with an ID.
-///
 /// ## Example Implementation
 ///
 /// ```
-/// use crud_traits::Id;
+/// use crud_traits::Meta;
+/// use sqlx::{Error, PgPool};
 ///
 /// struct User {
 ///     id: i32,
 ///     name: String,
 /// }
 ///
-/// impl Id for User {
+/// impl Meta for User {
 ///     type Id = i32;
+///     type Store = PgPool;
+///     type Error = Error;
 ///
 ///     fn id(&self) -> Self::Id {
 ///         self.id
 ///     }
 /// }
 /// ```
-pub trait Id {
-    type Id;
+pub trait Meta {
+    type Id: 'static + Clone + Debug + Eq + Hash + Send + Sync;
+    type Store: Send + Sync;
+
+    /// The error type used in all `Result`s returned by functions in
+    /// CRUD trait implementations for this type.
+    type Error;
 
     /// A unique ID for the record.
     ///
@@ -30,10 +36,10 @@ pub trait Id {
 }
 
 /// Produces a hash map of IDs to values given some values which
-/// implement [`Id`](crate::Id).
+/// implement [`Meta`](crate::Meta).
 pub fn hash_map_by_id<T>(values: Vec<T>) -> HashMap<T::Id, T>
 where
-    T: Id,
+    T: Meta,
     T::Id: Eq + Hash,
 {
     values
@@ -44,7 +50,8 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::Id;
+    use super::*;
+    use sqlx::{Error, PgPool};
 
     #[derive(Debug, Clone, Eq, PartialEq)]
     struct Person {
@@ -52,8 +59,10 @@ mod test {
         name: String,
     }
 
-    impl Id for Person {
+    impl Meta for Person {
         type Id = i32;
+        type Store = PgPool;
+        type Error = Error;
 
         fn id(&self) -> Self::Id {
             self.id
