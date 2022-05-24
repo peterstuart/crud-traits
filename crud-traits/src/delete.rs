@@ -2,7 +2,7 @@ use async_trait::async_trait;
 
 use crate::Meta;
 
-/// Delete record with a given ID.
+/// Delete records
 ///
 /// ## Example Implementation
 ///
@@ -38,6 +38,14 @@ use crate::Meta;
 ///             .await?;
 ///         Ok(())
 ///     }
+///
+///     async fn delete_all(store: &PgPool) -> Result<(), Error>
+///     {
+///         sqlx::query("DELETE FROM users")
+///             .execute(store)
+///             .await?;
+///         Ok(())
+///     }
 /// }
 /// ```
 #[async_trait]
@@ -51,4 +59,6 @@ where
         let id = self.id();
         <Self as Delete>::delete_by_id(id, store).await
     }
+
+    async fn delete_all(store: &Self::Store) -> Result<(), Self::Error>;
 }

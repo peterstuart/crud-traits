@@ -1,10 +1,11 @@
+use anyhow::{Error, Result};
 use async_trait::async_trait;
-use crud_traits::{Create, MappedModel, MappedModelWithParentId, Meta};
-use crud_traits_macros::{belongs_to, has_many, has_one, Read};
-use sqlx::{Error, FromRow, PgPool};
+use crud_traits::{Create, Delete, MappedModel, MappedModelWithParentId, Meta, Read};
+use crud_traits_macros::{belongs_to, has_many, has_one, Delete, Read};
+use sqlx::{FromRow, PgPool};
 use std::env;
 
-#[derive(Clone, Debug, Eq, Read, FromRow, PartialEq)]
+#[derive(Clone, Debug, Delete, Eq, Read, FromRow, PartialEq)]
 #[has_many(child = "Dog")]
 #[crud(table = "people")]
 struct Person {
@@ -30,15 +31,17 @@ struct PersonInput {
 impl Create for Person {
     type Input = PersonInput;
 
-    async fn create(input: PersonInput, store: &PgPool) -> Result<Self, Error> {
-        sqlx::query_as::<_, Person>("INSERT INTO people (name) VALUES ($1) RETURNING *")
-            .bind(input.name)
-            .fetch_one(store)
-            .await
+    async fn create(input: PersonInput, store: &PgPool) -> Result<Self> {
+        Ok(
+            sqlx::query_as::<_, Person>("INSERT INTO people (name) VALUES ($1) RETURNING *")
+                .bind(input.name)
+                .fetch_one(store)
+                .await?,
+        )
     }
 }
 
-#[derive(Clone, Debug, Eq, Read, FromRow, PartialEq)]
+#[derive(Clone, Debug, Delete, Eq, Read, FromRow, PartialEq)]
 #[belongs_to(parent = "Person", plural_alias = "people", table = "dogs")]
 #[has_one(child = "Bed")]
 #[crud(table = "dogs")]
@@ -67,12 +70,14 @@ struct DogInput {
 impl Create for Dog {
     type Input = DogInput;
 
-    async fn create(input: DogInput, store: &PgPool) -> Result<Self, Error> {
-        sqlx::query_as::<_, Dog>("INSERT INTO dogs (person_id, name) VALUES ($1, $2) RETURNING *")
-            .bind(input.person_id)
-            .bind(input.name)
-            .fetch_one(store)
-            .await
+    async fn create(input: DogInput, store: &PgPool) -> Result<Self> {
+        Ok(sqlx::query_as::<_, Dog>(
+            "INSERT INTO dogs (person_id, name) VALUES ($1, $2) RETURNING *",
+        )
+        .bind(input.person_id)
+        .bind(input.name)
+        .fetch_one(store)
+        .await?)
     }
 }
 
@@ -90,11 +95,11 @@ impl MappedModel for MappedDog {
         self.dog.id
     }
 
-    async fn from_model(dog: Dog, _: &PgPool) -> Result<Self, Error> {
+    async fn from_model(dog: Dog, _: &PgPool) -> Result<Self> {
         Ok(Self { dog })
     }
 
-    async fn from_models(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>, Error> {
+    async fn from_models(dogs: Vec<Dog>, _: &PgPool) -> Result<Vec<Self>> {
         Ok(dogs.into_iter().map(|dog| Self { dog }).collect())
     }
 }
@@ -105,7 +110,7 @@ impl MappedModelWithParentId<Person> for MappedDog {
     }
 }
 
-#[derive(Clone, Debug, Eq, Read, FromRow, PartialEq)]
+#[derive(Clone, Debug, Delete, Eq, Read, FromRow, PartialEq)]
 #[belongs_to(parent = "Dog", table = "beds")]
 #[crud(table = "beds")]
 struct Bed {
@@ -133,12 +138,14 @@ struct BedInput {
 impl Create for Bed {
     type Input = BedInput;
 
-    async fn create(input: BedInput, store: &PgPool) -> Result<Self, Error> {
-        sqlx::query_as::<_, Bed>("INSERT INTO beds (dog_id, location) VALUES ($1, $2) RETURNING *")
-            .bind(input.dog_id)
-            .bind(input.location)
-            .fetch_one(store)
-            .await
+    async fn create(input: BedInput, store: &PgPool) -> Result<Self> {
+        Ok(sqlx::query_as::<_, Bed>(
+            "INSERT INTO beds (dog_id, location) VALUES ($1, $2) RETURNING *",
+        )
+        .bind(input.dog_id)
+        .bind(input.location)
+        .fetch_one(store)
+        .await?)
     }
 }
 
@@ -147,6 +154,10 @@ async fn main() -> anyhow::Result<()> {
     let store = PgPool::connect(&env::var("DATABASE_URL")?).await?;
 
     sqlx::migrate!("examples/migrations").run(&store).await?;
+
+    Bed::delete_all(&store).await?;
+    Dog::delete_all(&store).await?;
+    Person::delete_all(&store).await?;
 
     let person1 = Person::create(
         PersonInput {
@@ -196,6 +207,11 @@ async fn main() -> anyhow::Result<()> {
         &store,
     )
     .await?;
+
+    assert_eq!(
+        Dog::read_all(&store).await?,
+        vec![dog1.clone(), dog2.clone(), dog3.clone()]
+    );
 
     assert_eq!(dog1.bed(&store).await?, Some(bed1));
     assert_eq!(dog2.bed(&store).await?, None);

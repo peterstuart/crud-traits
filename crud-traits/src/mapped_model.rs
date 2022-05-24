@@ -109,6 +109,10 @@ where
     async fn delete_by_id(id: Self::Id, store: &Self::Store) -> Result<(), Self::Error> {
         Ok(T::OriginalModel::delete_by_id(id, store).await?)
     }
+
+    async fn delete_all(store: &Self::Store) -> Result<(), Self::Error> {
+        Ok(T::OriginalModel::delete_all(store).await?)
+    }
 }
 
 pub trait MappedModelWithParentId<Parent>

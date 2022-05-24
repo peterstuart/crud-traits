@@ -31,7 +31,7 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
             async fn read(
                 id: <Self as crud_traits::Meta>::Id,
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> std::result::Result<Self, sqlx::Error> {
+            ) -> std::result::Result<Self, <Self as crud_traits::Meta>::Error> {
                 Ok(
                     sqlx::query_as!(Self, #query_one, id)
                         .fetch_one(store)
@@ -42,7 +42,7 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
             async fn maybe_read(
                 id: <Self as crud_traits::Meta>::Id,
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> std::result::Result<std::option::Option<Self>, sqlx::Error> {
+            ) -> std::result::Result<std::option::Option<Self>, <Self as crud_traits::Meta>::Error> {
                 Ok(
                     sqlx::query_as!(Self, #query_one, id)
                         .fetch_optional(store)
@@ -53,7 +53,7 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
             async fn read_many(
                 ids: &[<Self as crud_traits::Meta>::Id],
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> std::result::Result<Vec<Self>, sqlx::Error> {
+            ) -> std::result::Result<Vec<Self>, <Self as crud_traits::Meta>::Error> {
                 Ok(
                     sqlx::query_as!(Self, #query_many, ids)
                         .fetch_all(store)
@@ -63,7 +63,7 @@ pub fn sqlx_read(input: TokenStream) -> TokenStream {
 
             async fn read_all(
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> std::result::Result<Vec<Self>, sqlx::Error> {
+            ) -> std::result::Result<Vec<Self>, <Self as crud_traits::Meta>::Error> {
                 Ok(
                     sqlx::query_as!(Self, #query_all)
                         .fetch_all(store)
@@ -82,6 +82,7 @@ pub fn sqlx_delete(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = input;
 
     let query = format!("DELETE FROM {} WHERE id = $1", options.table);
+    let query_all = format!("DELETE FROM {}", options.table);
 
     quote! {
         #[async_trait::async_trait]
@@ -89,8 +90,17 @@ pub fn sqlx_delete(input: TokenStream) -> TokenStream {
             async fn delete_by_id(
                 id: <Self as crud_traits::Meta>::Id,
                 store: &<Self as crud_traits::Meta>::Store
-            ) -> std::result::Result<(), sqlx::Error> {
+            ) -> std::result::Result<(), <Self as crud_traits::Meta>::Error> {
                 sqlx::query_as!(Self, #query, id)
+                    .execute(store)
+                    .await?;
+                Ok(())
+            }
+
+            async fn delete_all(
+                store: &<Self as crud_traits::Meta>::Store
+            ) -> std::result::Result<(), <Self as crud_traits::Meta>::Error> {
+                sqlx::query_as!(Self, #query_all)
                     .execute(store)
                     .await?;
                 Ok(())
